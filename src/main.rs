@@ -3,29 +3,32 @@ use peroxide::fuga::*;
 use std::env::args;
 
 fn main() {
-    let n = args().nth(1).unwrap().parse::<usize>().unwrap();
-    let sigma = args().nth(2).unwrap().parse::<f64>().unwrap();
+    // # of samples
+    let d = args().nth(1).unwrap().parse::<usize>().unwrap();
+
+    // # of nodes
+    let n = args().nth(2).unwrap().parse::<usize>().unwrap();
+
+    // Determine the kernel window size
+    let sigma = args().nth(3).unwrap().parse::<f64>().unwrap();
 
     let x = linspace(0, 1, n);
-    let y = grf_1(n, sigma);
-
-    //let x_new = linspace(0, 1, 101);
-    //let cs = cubic_hermite_spline(&x, &y, Quadratic);
-    //let y_new = cs.eval_vec(&x_new);
+    let y = (0 .. d).map(|_| grf(n, sigma)).collect::<Vec<_>>();
 
     let mut df = DataFrame::new(vec![]);
     df.push("x", Series::new(x));
-    df.push("y", Series::new(y));
-    df.print();
+    for i in 0 .. d {
+        df.push(&format!("y{}", i), Series::new(y[i].clone()));
+    }
 
-    df.write_nc("test.nc").unwrap();
+    df.write_nc(&format!("grf_{}_{}_{:.2}.nc", d, n, sigma)).unwrap();
 }
 
 /// Gaussian Random Fields using circulant embedding method 1
 ///
 /// * Title: An Effective Method for Simulating Gaussian Random Fields
 /// * Author: Grace Chan
-fn grf_1(n: usize, sigma: f64) -> Vec<f64> {
+fn grf(n: usize, sigma: f64) -> Vec<f64> {
     let g = (2f64 * (n - 1) as f64).log2().ceil() as i32;
     let mut m = 2f64.powi(g) as usize;
     let qa = loop {
@@ -36,7 +39,6 @@ fn grf_1(n: usize, sigma: f64) -> Vec<f64> {
         fft.process(&mut c_fft);
         let c_fft = c_fft.iter().map(|x| x.re).collect::<Vec<_>>();
         let c_min = c_fft.iter().min_by(|&x, &y| x.partial_cmp(y).unwrap()).unwrap();
-        c_min.print();
 
         if c_min >= &0f64 {
             break c_fft.fmap(|t| t.sqrt());
