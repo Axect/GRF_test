@@ -21,7 +21,8 @@ fn main() {
         df.push(&format!("y{}", i), Series::new(y[i].clone()));
     }
 
-    df.write_nc(&format!("grf_{}_{}_{:.2}.nc", d, n, sigma)).unwrap();
+    df.write_nc("test.nc").unwrap();
+    //df.write_nc(&format!("grf_{}_{}_{:.2}.nc", d, n, sigma)).unwrap();
 }
 
 /// Gaussian Random Fields using circulant embedding method 1
@@ -56,6 +57,7 @@ fn grf(n: usize, sigma: f64) -> Vec<f64> {
     let fft = planner.plan_fft_inverse(m);
     let mut z_fft = z.iter().map(|x| Complex::new(*x, 0f64)).collect::<Vec<_>>();
     fft.process(&mut z_fft);
+    z_fft.iter_mut().for_each(|x| *x /= m as f64);
 
     let mut a = z_fft.into_iter()
         .zip(qa.into_iter())
@@ -68,7 +70,7 @@ fn grf(n: usize, sigma: f64) -> Vec<f64> {
 
     let y = a
         .iter()
-        .map(|x| x.re / (m as f64))
+        .map(|x| x.re)
         .collect::<Vec<_>>();
 
     y[..n].to_vec()
